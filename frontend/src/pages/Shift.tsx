@@ -102,8 +102,12 @@ const Shift: FunctionComponent = () => {
   const shifts = Array.isArray(shiftsData) ? shiftsData : [];
 
   const isWeekPublished = shifts.some((shift: ShiftData) => shift?.isPublished);
-  const weekId = shifts[0]?.weekId;
-  const dateWeek = shifts[0]?.date;
+
+  const weekShift = shifts.find((s) => s.weekId);
+  const weekId = weekShift?.weekId ?? null;
+  const dateWeek = shifts.length
+    ? shifts.reduce((min, s) => (s.date < min ? s.date : min), shifts[0].date)
+    : null;
 
   useEffect(() => {
     if (isWeekPublished && dateWeek) {
@@ -228,10 +232,12 @@ const Shift: FunctionComponent = () => {
 
   const handlePublishWeek = async () => {
     try {
-      await publishShifts(weekId);
-      queryClient.invalidateQueries({ queryKey: ["shifts"] });
-      await handleGetWeekByDate();
-      setShowPublishDialog(false);
+      if (weekId) {
+        await publishShifts(weekId);
+        queryClient.invalidateQueries({ queryKey: ["shifts"] });
+        await handleGetWeekByDate();
+        setShowPublishDialog(false);
+      }
     } catch (err) {
       setError("Failed to publish shifts");
     }
@@ -239,8 +245,10 @@ const Shift: FunctionComponent = () => {
 
   const handleGetWeekByDate = async () => {
     try {
-      const week = await getWeekByDate(dateWeek);
-      setPublishedDate(week.publishedAt);
+      if (dateWeek) {
+        const week = await getWeekByDate(dateWeek);
+        setPublishedDate(week.publishedAt);
+      }
     } catch (err) {
       setError("Failed to get week by date");
     }

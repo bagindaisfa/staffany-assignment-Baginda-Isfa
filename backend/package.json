@@ -23,7 +23,7 @@
     "@hapi/vision": "^6.1.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
-    "date-fns": "^2.28.0",
+    "date-fns": "^2.30.0",
     "dotenv": "^8.6.0",
     "hapi-cors": "^1.0.3",
     "hapi-swagger": "^14.2.4",

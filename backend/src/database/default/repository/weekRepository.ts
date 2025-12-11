@@ -1,4 +1,5 @@
 import { getRepository, FindOneOptions, FindOptionsWhere } from "typeorm";
+import { format } from "date-fns";
 import moduleLogger from "../../../shared/functions/logger";
 import Week from "../entity/week";
 
@@ -23,7 +24,7 @@ export const findOrCreateWeekForDate = async (date: Date): Promise<Week> => {
   // Find existing week that contains this date
   const existingWeek = await repository
     .createQueryBuilder('week')
-    .where(':date BETWEEN week.startDate AND week.endDate', { date: date.toISOString().split('T')[0] })
+    .where(':date BETWEEN week.startDate AND week.endDate', { date: format(date, 'yyyy-MM-dd') })
     .getOne();
 
   if (existingWeek) {

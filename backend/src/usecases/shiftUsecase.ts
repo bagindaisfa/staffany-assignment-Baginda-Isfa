@@ -37,6 +37,7 @@ export const create = async (payload: ICreateShift): Promise<Shift> => {
     shift.startTime = payload.startTime;
     shift.endTime = payload.endTime;
     shift.week = week;
+    shift.weekId = week.id;
 
     return await shiftRepository.create(shift);
   } catch (error) {
