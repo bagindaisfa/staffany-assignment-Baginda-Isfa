@@ -33,7 +33,7 @@ const init = async () => {
       plugin: Cors,
       options: {
         origins: ['*'],
-        methods: ['POST, GET, OPTIONS, PATCH, PUT, DELETE'],
+        methods: ['POST, GET, OPTIONS, PATCH, PUT, DELETE']
       }
     }
   ]);

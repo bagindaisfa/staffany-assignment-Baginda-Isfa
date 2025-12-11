@@ -1,18 +1,25 @@
 import { Server } from '@hapi/hapi';
+import Joi from 'joi';
 import * as shiftController from './shiftController';
 import { createShiftDto, filterSchema, idDto, updateShiftDto } from '../../../shared/dtos';
 
 export default function (server: Server, basePath: string) {
   server.route({
-    method: "GET",
-    path: basePath,
-    handler: shiftController.find,
-    options: {
-      description: 'Get shifts with filter',
-      notes: 'Get all shifts if filter is not specified.',
-      tags: ['api', 'shift']
+  method: "GET",
+  path: basePath,
+  handler: shiftController.find,
+  options: {
+    description: 'Get shifts with filter',
+    notes: 'Get all shifts if filter is not specified.',
+    tags: ['api', 'shift'],
+    validate: {
+      query: Joi.object({
+        startDate: Joi.date().iso().description('Start date for filtering (ISO format)'),
+        endDate: Joi.date().iso().description('End date for filtering (ISO format)')
+      }).unknown(true) // Allow other query parameters
     }
-  });
+  }
+});
   
   server.route({
     method: "GET",
@@ -62,11 +69,30 @@ export default function (server: Server, basePath: string) {
     path: basePath + "/{id}",
     handler: shiftController.deleteById,
     options: {
-      description: 'Delete shift',
-      notes: 'Delete shift',
+      description: 'Delete shift by id',
+      notes: 'Delete shift by id',
       tags: ['api', 'shift'],
       validate: {
-        params: idDto,
+        params: idDto
+      },
+    }
+  });
+
+  server.route({
+    method: "POST",
+    path: basePath + "/check-clash",
+    handler: shiftController.checkClash,
+    options: {
+      description: 'Check for overlapping shifts',
+      notes: 'Check if a shift would overlap with existing shifts for the same employee',
+      tags: ['api', 'shift'],
+      validate: {
+        payload: Joi.object({
+          date: Joi.string().isoDate().required().description('Date of the shift (YYYY-MM-DD)'),
+          startTime: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/).required().description('Start time of the shift (HH:MM)'),
+          endTime: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/).required().description('End time of the shift (HH:MM)'),
+          excludeShiftId: Joi.string().optional().description('ID of the shift to exclude from the check (useful for updates)')
+        })
       },
     }
   });

@@ -36,3 +36,19 @@ export const updateById = async (
 export const deleteById = async (id: string | string[]) => {
   return shiftRepository.deleteById(id);
 };
+
+export const checkClash = async (shiftData: { 
+  startTime: string; 
+  endTime: string; 
+  date: string;
+  excludeShiftId?: string 
+}): Promise<Shift[]> => {
+  const { startTime, endTime, date, excludeShiftId } = shiftData;
+  
+  return shiftRepository.findOverlappingShifts(
+    date,
+    startTime,
+    endTime,
+    excludeShiftId
+  );
+};

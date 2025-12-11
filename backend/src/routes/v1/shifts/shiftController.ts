@@ -1,4 +1,5 @@
 import { Request, ResponseToolkit } from "@hapi/hapi";
+import { Between } from "typeorm";
 import * as shiftUsecase from "../../../usecases/shiftUsecase";
 import { errorHandler } from "../../../shared/functions/error";
 import {
@@ -13,8 +14,13 @@ const logger = moduleLogger("shiftController");
 export const find = async (req: Request, h: ResponseToolkit) => {
   logger.info("Find shifts");
   try {
-    const filter = req.query;
-    const data = await shiftUsecase.find(filter);
+    const { startDate, endDate, ...rest } = req.query as any;
+    const where: any = { ...rest };
+    
+    if (startDate && endDate) {
+      where.date = Between(new Date(startDate), new Date(endDate));
+    }
+    const data = await shiftUsecase.find({ where });
     const res: ISuccessResponse = {
       statusCode: 200,
       message: "Get shift successful",
@@ -22,7 +28,7 @@ export const find = async (req: Request, h: ResponseToolkit) => {
     };
     return res;
   } catch (error) {
-    logger.error(error.message)
+    logger.error(error.message);
     return errorHandler(h, error);
   }
 };
@@ -83,16 +89,43 @@ export const updateById = async (req: Request, h: ResponseToolkit) => {
 export const deleteById = async (req: Request, h: ResponseToolkit) => {
   logger.info("Delete shift by id");
   try {
-    const id = req.params.id;
-    const data = await shiftUsecase.deleteById(id);
+    const { id } = req.params;
+    await shiftUsecase.deleteById(id);
     const res: ISuccessResponse = {
       statusCode: 200,
       message: "Delete shift successful",
-      results: data,
+      results: { success: true }
     };
     return res;
   } catch (error) {
-    logger.error(error.message)
+    logger.error(error.message);
+    return errorHandler(h, error);
+  }
+};
+
+export const checkClash = async (req: Request, h: ResponseToolkit) => {
+  logger.info("Check shift clash");
+  try {
+    const { date, startTime, endTime, excludeShiftId } = req.payload as any;
+    
+    const overlappingShifts = await shiftUsecase.checkClash({
+      date,
+      startTime,
+      endTime,
+      excludeShiftId
+    });
+
+    const res: ISuccessResponse = {
+      statusCode: 200,
+      message: "Shift clash check successful",
+      results: {
+        hasClash: overlappingShifts.length > 0,
+        overlappingShifts
+      }
+    };
+    return res;
+  } catch (error) {
+    logger.error(error.message);
     return errorHandler(h, error);
   }
 };

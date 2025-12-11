@@ -66,5 +66,34 @@ export const deleteById = async (
 ): Promise<DeleteResult> => {
   logger.info("Delete by id");
   const repository = getRepository(Shift);
-  return await repository.delete(id);
+  return repository.delete(id);
+};
+
+export const findOverlappingShifts = async (
+  startDate: string,
+  startTime: string,
+  endTime: string,
+  excludeShiftId?: string
+): Promise<Shift[]> => {
+  logger.info("Find overlapping shifts");
+  const repository = getRepository(Shift);
+  
+  let query = `
+    SELECT * FROM shift 
+    WHERE date = $1 
+    AND (
+      ("startTime" <= $2 AND "endTime" > $2) OR
+      ("startTime" < $3 AND "endTime" >= $3) OR
+      ("startTime" >= $2 AND "endTime" <= $3)
+    )
+  `;
+  
+  const params: any[] = [startDate, startTime, endTime];
+  
+  if (excludeShiftId) {
+    query += ` AND id != $${params.length + 1}`;
+    params.push(excludeShiftId);
+  }
+  
+  return repository.query(query, params);
 };
