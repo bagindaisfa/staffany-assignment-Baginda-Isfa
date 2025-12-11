@@ -298,7 +298,7 @@ const Shift: FunctionComponent = () => {
                     <TaskAltIcon color="success" sx={{ mr: 1 }} />
                     <Typography variant="subtitle1" color="success">
                       Week published on {publishedDate
-                        ? format(parseISO(publishedDate), "MMM d, yyyy")
+                        ? format(parseISO(publishedDate), "dd MMM yyyy, h:mm a")
                         : "-"}
                     </Typography>
                   </>
