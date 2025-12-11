@@ -17,11 +17,19 @@ export default class Shift extends BaseTimestamp {
 
   @Column({
     type: "time",
+    transformer: {
+      to: (value: string) => value,        // raw string
+      from: (value: string) => value       // raw string "HH:mm:ss"
+    }
   })
   startTime: string;
 
   @Column({
     type: "time",
+    transformer: {
+      to: (value: string) => value,
+      from: (value: string) => value
+    }
   })
   endTime: string;
 

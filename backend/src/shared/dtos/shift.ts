@@ -6,7 +6,8 @@ export const createShiftDto = Joi.object({
   name: Joi.string().required(),
   date: Joi.date().required(),
   startTime: Joi.string().regex(timeRegex).required(),
-  endTime:Joi.string().regex(timeRegex).required()
+  endTime:Joi.string().regex(timeRegex).required(),
+  ignoreClash: Joi.boolean().default(false)
 });
 
 export const updateShiftDto = Joi.object({
@@ -14,4 +15,11 @@ export const updateShiftDto = Joi.object({
   date: Joi.date(),
   startTime: Joi.string().regex(timeRegex),
   endTime:Joi.string().regex(timeRegex),
+});
+
+export const checkClashShiftDto = Joi.object({
+  date: Joi.string().required(),
+  startTime: Joi.string().required(),
+  endTime:Joi.string().required(),
+  excludeShiftId: Joi.string().optional()
 });

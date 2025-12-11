@@ -1,7 +1,7 @@
 import { Server } from '@hapi/hapi';
 import Joi from 'joi';
 import * as shiftController from './shiftController';
-import { createShiftDto, filterSchema, idDto, updateShiftDto } from '../../../shared/dtos';
+import { createShiftDto, filterSchema, idDto, updateShiftDto, checkClashShiftDto } from '../../../shared/dtos';
 
 export default function (server: Server, basePath: string) {
   server.route({
@@ -87,12 +87,7 @@ export default function (server: Server, basePath: string) {
       notes: 'Check if a shift would overlap with existing shifts for the same employee',
       tags: ['api', 'shift'],
       validate: {
-        payload: Joi.object({
-          date: Joi.string().isoDate().required().description('Date of the shift (YYYY-MM-DD)'),
-          startTime: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/).required().description('Start time of the shift (HH:MM)'),
-          endTime: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/).required().description('End time of the shift (HH:MM)'),
-          excludeShiftId: Joi.string().optional().description('ID of the shift to exclude from the check (useful for updates)')
-        })
+        payload: checkClashShiftDto,
       },
     }
   });

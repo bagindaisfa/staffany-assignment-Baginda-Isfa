@@ -1,32 +1,47 @@
 import React, { FunctionComponent, useEffect, useState } from "react";
+import { useHistory, useLocation } from "react-router-dom";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
+import {
+  format,
+  startOfWeek,
+  endOfWeek,
+  parseISO,
+  isWithinInterval,
+} from "date-fns";
 import { useTheme } from "@mui/material/styles";
 import { getErrorMessage } from "../helper/error/index";
-import { deleteShiftById, getShifts } from "../helper/api/shift";
+import {
+  deleteShiftById,
+  getShifts,
+  checkShiftClash,
+  publishShifts,
+} from "../helper/api/shift";
 import DataTable from "react-data-table-component";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import Fab from "@mui/material/Fab";
+import {
+  Box,
+  Button,
+  Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import { useHistory } from "react-router-dom";
+import WeekPicker from "../components/WeekPicker";
 import ConfirmDialog from "../components/ConfirmDialog";
 import Alert from "@mui/material/Alert";
 import { Link as RouterLink } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ShiftData } from "../types/shift";
 
 interface ActionButtonProps {
   id: string;
   onDelete: () => void;
-}
-
-interface ShiftData {
-  id: string;
-  name: string;
-  date: string;
-  startTime: string;
-  endTime: string;
 }
 
 const ActionButton: FunctionComponent<ActionButtonProps> = ({
@@ -53,14 +68,38 @@ const ActionButton: FunctionComponent<ActionButtonProps> = ({
 const Shift: FunctionComponent = () => {
   const theme = useTheme();
   const history = useHistory();
-
+  const queryClient = useQueryClient();
+  const location = useLocation();
+  const [currentWeek, setCurrentWeek] = useState<Date>(new Date());
   const [rows, setRows] = useState<ShiftData[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [errMsg, setErrMsg] = useState("");
-
+  const [clashError, setClashError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [showClashDialog, setShowClashDialog] = useState(false);
+  const [error, setError] = useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedShift, setSelectedShift] = useState<ShiftData | null>(null);
+
+  const {
+    data: shiftsData,
+    isLoading,
+    error: fetchError,
+  } = useQuery<ShiftData[], Error>({
+    queryKey: ["shifts", format(currentWeek, "yyyy-MM-dd")],
+    queryFn: () =>
+      getShifts({
+        startDate: format(startOfWeek(currentWeek), "yyyy-MM-dd"),
+        endDate: format(endOfWeek(currentWeek), "yyyy-MM-dd"),
+      }),
+    initialData: [], // Ensure initial data is an empty array
+  });
+
+  const shifts = Array.isArray(shiftsData) ? shiftsData : [];
+
+  const isWeekPublished = shifts.some((shift: ShiftData) => shift?.isPublished);
 
   const onDeleteClick = (id: string) => {
     setSelectedId(id);
@@ -72,129 +111,274 @@ const Shift: FunctionComponent = () => {
     setShowDeleteConfirm(false);
   };
 
-  useEffect(() => {
-    const getData = async () => {
-      try {
-        setIsLoading(true);
-        setErrMsg("");
-        const { results } = await getShifts();
-        setRows(results);
-      } catch (error) {
-        const message = getErrorMessage(error);
-        setErrMsg(message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    getData();
-  }, []);
-
+  // Table columns
   const columns = [
     {
-      id: "name",
       name: "Name",
-      selector: (row: ShiftData) => row.name || "",
+      selector: (row: ShiftData) => row.name,
       sortable: true,
     },
     {
-      id: "date",
       name: "Date",
-      selector: (row: ShiftData) => row.date || "",
+      selector: (row: ShiftData) => format(parseISO(row.date), "MMM d, yyyy"),
       sortable: true,
     },
     {
-      id: "startTime",
       name: "Start Time",
-      selector: (row: ShiftData) => row.startTime || "",
+      selector: (row: ShiftData) => format(parseISO(row.startTime), "h:mm a"),
       sortable: true,
     },
     {
-      id: "endTime",
       name: "End Time",
-      selector: (row: ShiftData) => row.endTime || "",
+      selector: (row: ShiftData) => format(parseISO(row.endTime), "h:mm a"),
       sortable: true,
     },
     {
-      id: "actions",
       name: "Actions",
       cell: (row: ShiftData) => (
-        <ActionButton id={row.id} onDelete={() => onDeleteClick(row.id)} />
+        <Box>
+          <IconButton
+            size="small"
+            onClick={() => history.push(`/shift/${row.id}/edit`)}
+            disabled={isWeekPublished}
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => {
+              setSelectedShift(row);
+              setShowDeleteDialog(true);
+            }}
+            disabled={isWeekPublished}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Box>
       ),
-      ignoreRowClick: true,
-      allowOverflow: true,
-      button: true,
     },
   ];
 
-  const deleteDataById = async () => {
-    try {
-      setDeleteLoading(true);
-      setErrMsg("");
+  // Handle add shift with clash detection
+  const handleAddShift = async () => {
+    const newShiftDate = startOfWeek(currentWeek);
+    const newShiftStartTime = new Date();
+    newShiftStartTime.setMinutes(0, 0, 0);
+    const newShiftEndTime = new Date(newShiftStartTime);
+    newShiftEndTime.setHours(newShiftStartTime.getHours() + 1);
 
-      if (selectedId === null) {
-        throw new Error("ID is null");
+    try {
+      // Check for clashes
+      const clash = await checkShiftClash({
+        date: format(newShiftDate, "yyyy-MM-dd"),
+        startTime: format(newShiftStartTime, "HH:mm"),
+        endTime: format(newShiftEndTime, "HH:mm"),
+      });
+
+      if (clash.hasClash && clash.conflictingShift) {
+        setClashError(
+          `This shift clashes with: ${clash.conflictingShift.name} (${format(
+            parseISO(clash.conflictingShift.startTime),
+            "h:mm a"
+          )} - ${format(parseISO(clash.conflictingShift.endTime), "h:mm a")})`
+        );
+        setShowClashDialog(true);
+        return;
       }
 
-      await deleteShiftById(selectedId);
-
-      const tempRows = [...rows];
-      const idx = tempRows.findIndex((v) => v.id === selectedId);
-      tempRows.splice(idx, 1);
-      setRows(tempRows);
-    } catch (error) {
-      const message = getErrorMessage(error);
-      setErrMsg(message);
-    } finally {
-      setDeleteLoading(false);
-      onCloseDeleteDialog();
+      // If no clash, proceed to add shift
+      history.push({
+        pathname: "/shift/add",
+        search: `?date=${format(newShiftDate, "yyyy-MM-dd")}&startTime=${format(
+          newShiftStartTime,
+          "HH:mm"
+        )}&endTime=${format(newShiftEndTime, "HH:mm")}`,
+      });
+    } catch (err) {
+      setError("Error checking for shift clashes");
     }
+  };
+
+  const handleIgnoreClash = () => {
+    const newShiftDate = startOfWeek(currentWeek);
+    const newShiftStartTime = new Date();
+    newShiftStartTime.setMinutes(0, 0, 0);
+    const newShiftEndTime = new Date(newShiftStartTime);
+    newShiftEndTime.setHours(newShiftStartTime.getHours() + 1);
+
+    history.push({
+      pathname: "/shift/true/add",
+      search: `?date=${format(newShiftDate, "yyyy-MM-dd")}&startTime=${format(
+        newShiftStartTime,
+        "HH:mm"
+      )}&endTime=${format(newShiftEndTime, "HH:mm")}`,
+    });
+    setShowClashDialog(false);
+  };
+
+  const handlePublishWeek = async () => {
+    try {
+      await publishShifts({
+        startDate: format(startOfWeek(currentWeek), "yyyy-MM-dd"),
+        endDate: format(endOfWeek(currentWeek), "yyyy-MM-dd"),
+      });
+      queryClient.invalidateQueries({ queryKey: ["shifts"] });
+      setShowPublishDialog(false);
+    } catch (err) {
+      setError("Failed to publish shifts");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedShift) return;
+
+    try {
+      await deleteShiftById(selectedShift.id);
+      queryClient.invalidateQueries({ queryKey: ["shifts"] });
+      setShowDeleteDialog(false);
+    } catch (err) {
+      setError("Failed to delete shift");
+    }
+  };
+
+  const handleWeekChange = (newWeek: Date) => {
+    setCurrentWeek(newWeek);
+    // Update URL with the new week
+    const searchParams = new URLSearchParams(location.search);
+    searchParams.set("week", format(newWeek, "yyyy-MM-dd"));
+    history.push({ search: searchParams.toString() });
   };
 
   return (
     <Grid container spacing={3}>
       <Grid item xs={12}>
-        <Card sx={{ minWidth: 275 }}>
+        <Card>
           <CardContent>
-            {errMsg.length > 0 ? (
-              <Alert severity="error">{errMsg}</Alert>
-            ) : (
-              <></>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              mb={3}
+            >
+              <WeekPicker
+                currentWeek={currentWeek}
+                onWeekChange={handleWeekChange}
+              />
+              <Box>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<AddIcon />}
+                  onClick={handleAddShift}
+                  disabled={isWeekPublished}
+                  sx={{ mr: 2 }}
+                >
+                  Add Shift
+                </Button>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={() => setShowPublishDialog(true)}
+                  disabled={shifts.length === 0 || isWeekPublished}
+                >
+                  Publish
+                </Button>
+              </Box>
+            </Box>
+
+            {isWeekPublished && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                This week has been published. Editing is disabled.
+              </Alert>
             )}
+
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+
             <DataTable
-              title="Shifts"
               columns={columns}
-              data={rows}
+              data={shifts}
               progressPending={isLoading}
-              noDataComponent="No shifts found"
-              defaultSortFieldId="name"
-              dense
+              noDataComponent="There are no records to display"
+              pagination
+              paginationPerPage={10}
+              paginationRowsPerPageOptions={[10, 25, 50, 100]}
             />
           </CardContent>
         </Card>
       </Grid>
-      <Fab
-        size="medium"
-        aria-label="add"
-        onClick={() => history.push("/shift/add")}
-        sx={{
-          position: "fixed",
-          bottom: 40,
-          right: 40,
-          backgroundColor: "white",
-          color: theme.customColors.turquoise,
-        }}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        maxWidth="sm"
+        fullWidth
       >
-        <AddIcon />
-      </Fab>
-      <ConfirmDialog
-        title="Delete Confirmation"
-        description={`Do you want to delete this data ?`}
-        onClose={onCloseDeleteDialog}
-        open={showDeleteConfirm}
-        onYes={deleteDataById}
-        loading={deleteLoading}
-      />
+        <DialogTitle>Delete Shift</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to delete this shift?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
+          <Button onClick={handleDelete} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Publish Confirmation Dialog */}
+      <Dialog
+        open={showPublishDialog}
+        onClose={() => setShowPublishDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Publish Shifts</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to publish all shifts for this week? Once
+            published, shifts cannot be modified.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowPublishDialog(false)}>Cancel</Button>
+          <Button
+            onClick={handlePublishWeek}
+            color="primary"
+            variant="contained"
+          >
+            Publish
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Shift Clash Dialog */}
+      <Dialog
+        open={showClashDialog}
+        onClose={() => setShowClashDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Shift Clash Detected</DialogTitle>
+        <DialogContent>
+          <Typography>{clashError}</Typography>
+          <Typography mt={2}>Do you want to proceed anyway?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowClashDialog(false)}>Cancel</Button>
+          <Button
+            onClick={handleIgnoreClash}
+            color="primary"
+            variant="contained"
+          >
+            Ignore
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Grid>
   );
 };

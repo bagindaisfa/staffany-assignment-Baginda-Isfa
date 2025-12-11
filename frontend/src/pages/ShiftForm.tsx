@@ -10,7 +10,7 @@ import {
   getShiftById,
   updateShiftById,
 } from "../helper/api/shift";
-import { useHistory, useParams } from "react-router-dom";
+import { useHistory, useParams, useLocation } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
@@ -22,6 +22,7 @@ interface IFormInput {
   date: string;
   startTime: string;
   endTime: string;
+  ignoreClash: boolean;
 }
 
 const shiftSchema = Joi.object({
@@ -33,11 +34,13 @@ const shiftSchema = Joi.object({
 
 interface RouteParams {
   id: string;
+  ignoreClash: string;
 }
 
 const ShiftForm: FunctionComponent = () => {
   const history = useHistory();
-  const { id } = useParams<RouteParams>();
+  const location = useLocation();
+  const { id, ignoreClash } = useParams<RouteParams>();
   const isEdit = id !== undefined;
 
   const [error, setError] = useState("");
@@ -55,15 +58,27 @@ const ShiftForm: FunctionComponent = () => {
     const getData = async () => {
       try {
         if (!isEdit) {
-          return;
+          // Prefill for Add Shift
+          const params = new URLSearchParams(location.search);
+
+          const date = params.get("date");
+          const startTime = params.get("startTime");
+          const endTime = params.get("endTime");
+
+          if (date) setValue("date", date);
+          if (startTime) setValue("startTime", startTime);
+          if (endTime) setValue("endTime", endTime);
+
+          return; // ⬅ FIX: stop here if adding new shift
         }
 
+        // Edit shift
         const { result } = await getShiftById(id);
 
         setValue("name", result.name);
-        setValue("date", result.date);
-        setValue("startTime", result.startTime);
-        setValue("endTime", result.endTime);
+        setValue("date", result.date.slice(0, 10)); // ensure date format
+        setValue("startTime", result.startTime.slice(0, 5));
+        setValue("endTime", result.endTime.slice(0, 5));
       } catch (error) {
         const message = getErrorMessage(error);
         setError(message);
@@ -80,7 +95,11 @@ const ShiftForm: FunctionComponent = () => {
       if (isEdit) {
         await updateShiftById(id, data);
       } else {
-        await createShifts(data);
+        const payload = {
+          ...data,
+          ignoreClash: ignoreClash === "true"
+        }
+        await createShifts(payload);
       }
 
       history.push("/shift");
@@ -91,72 +110,80 @@ const ShiftForm: FunctionComponent = () => {
   };
 
   return (
-    <Grid container spacing={3}>
-      <Grid item xs={12}>
-        <Card>
-          <CardContent>
-            {error.length > 0 ? <Alert severity="error">{error}</Alert> : <></>}
-            <form onSubmit={handleSubmit(onSubmit)}>
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Name"
-                    inputProps={{ ...register("name") }}
-                    error={!!errors.name}
-                    helperText={errors.name?.message}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Date"
-                    type="date"
-                    inputProps={{ ...register("date") }}
-                    error={!!errors.date}
-                    helperText={errors.date?.message}
-                    InputLabelProps={{
-                      shrink: true,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Start Time"
-                    type="time"
-                    inputProps={{ ...register("startTime") }}
-                    error={!!errors.startTime}
-                    helperText={errors.startTime?.message}
-                    InputLabelProps={{
-                      shrink: true,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="End Time"
-                    type="time"
-                    inputProps={{ ...register("endTime") }}
-                    error={!!errors.endTime}
-                    helperText={errors.endTime?.message}
-                    InputLabelProps={{
-                      shrink: true,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Button type="submit" variant="contained" color="primary">
-                    Submit
-                  </Button>
-                </Grid>
+    <Card>
+      <CardContent>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <Grid container spacing={3}>
+
+            {/* BACK BUTTON */}
+            <Grid item xs={12}>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={() => history.push("/shift")}
+              >
+                BACK
+              </Button>
+            </Grid>
+
+            {/* SHIFT NAME */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Shift Name *"
+                {...register("name")}
+                error={!!errors.name}
+                helperText={errors.name?.message}
+              />
+            </Grid>
+
+            {/* DATE + START + END horizontally */}
+            <Grid item xs={12} container spacing={3}>
+              <Grid item xs={4}>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="Event date"
+                  {...register("date")}
+                  InputLabelProps={{ shrink: true }}
+                  error={!!errors.date}
+                />
               </Grid>
-            </form>
-          </CardContent>
-        </Card>
-      </Grid>
-    </Grid>
+
+              <Grid item xs={4}>
+                <TextField
+                  fullWidth
+                  type="time"
+                  label="Start Time"
+                  {...register("startTime")}
+                  InputLabelProps={{ shrink: true }}
+                  error={!!errors.startTime}
+                />
+              </Grid>
+
+              <Grid item xs={4}>
+                <TextField
+                  fullWidth
+                  type="time"
+                  label="End Time"
+                  {...register("endTime")}
+                  InputLabelProps={{ shrink: true }}
+                  error={!!errors.endTime}
+                />
+              </Grid>
+            </Grid>
+
+            {/* SAVE BUTTON RIGHT */}
+            <Grid item xs={12} style={{ textAlign: "right" }}>
+              <Button type="submit" variant="contained" color="primary">
+                SAVE
+              </Button>
+            </Grid>
+
+          </Grid>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 

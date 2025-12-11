@@ -8,37 +8,42 @@ import ShiftForm from "./pages/ShiftForm";
 import { ThemeProvider } from "@mui/material";
 import { staffanyTheme } from "./commons/theme";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient();
 
 function App() {
   return (
-    <ErrorBoundary>
-      <ThemeProvider theme={staffanyTheme}>
-        <BrowserRouter>
-          <Switch>
-            <Route exact path="/">
-              <Dashboard>
-                <Home />
-              </Dashboard>
-            </Route>
-            <Route exact path="/shift">
-              <Dashboard>
-                <Shift />
-              </Dashboard>
-            </Route>
-            <Route exact path="/shift/add">
-              <Dashboard>
-                <ShiftForm />
-              </Dashboard>
-            </Route>
-            <Route exact path="/shift/:id/edit">
-              <Dashboard>
-                <ShiftForm />
-              </Dashboard>
-            </Route>
-          </Switch>
-        </BrowserRouter>
-      </ThemeProvider>
-    </ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ErrorBoundary>
+        <ThemeProvider theme={staffanyTheme}>
+          <BrowserRouter>
+            <Switch>
+              <Route exact path="/">
+                <Dashboard>
+                  <Home />
+                </Dashboard>
+              </Route>
+              <Route exact path="/shift">
+                <Dashboard>
+                  <Shift />
+                </Dashboard>
+              </Route>
+              <Route exact path="/shift/:ignoreClash/add">
+                <Dashboard>
+                  <ShiftForm />
+                </Dashboard>
+              </Route>
+              <Route exact path="/shift/:id/edit">
+                <Dashboard>
+                  <ShiftForm />
+                </Dashboard>
+              </Route>
+            </Switch>
+          </BrowserRouter>
+        </ThemeProvider>
+      </ErrorBoundary>
+    </QueryClientProvider>
   );
 }
 

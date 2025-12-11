@@ -44,11 +44,25 @@ export const findOne = async (
   return data;
 };
 
-export const create = async (payload: Shift): Promise<Shift> => {
+export const create = async (payload: any): Promise<Shift> => {
   logger.info("Create");
-  const repository = getRepository(Shift);
-  const newdata = await repository.save(payload);
+  try {
+    const repository = getRepository(Shift);
+  const pyld = {
+    name: payload.name,
+    date: payload.date,
+    startTime: payload.startTime,
+    endTime: payload.endTime,
+    weekId: payload.weekId,
+  }
+  const newdata = await repository.save(pyld);
   return newdata;
+  } catch (error) {
+    logger.error(error.message);
+    console.log(error);
+    throw error;
+  }
+  
 };
 
 export const updateById = async (
@@ -70,30 +84,48 @@ export const deleteById = async (
 };
 
 export const findOverlappingShifts = async (
-  startDate: string,
+  date: string,
   startTime: string,
   endTime: string,
   excludeShiftId?: string
 ): Promise<Shift[]> => {
-  logger.info("Find overlapping shifts");
-  const repository = getRepository(Shift);
+  const repo = getRepository(Shift);
   
-  let query = `
-    SELECT * FROM shift 
-    WHERE date = $1 
-    AND (
-      ("startTime" <= $2 AND "endTime" > $2) OR
-      ("startTime" < $3 AND "endTime" >= $3) OR
-      ("startTime" >= $2 AND "endTime" <= $3)
-    )
-  `;
+  // Create date objects in local time
+  const newStart = new Date(`${date}T${startTime}`);
+  let newEnd = new Date(`${date}T${endTime}`);
   
-  const params: any[] = [startDate, startTime, endTime];
-  
-  if (excludeShiftId) {
-    query += ` AND id != $${params.length + 1}`;
-    params.push(excludeShiftId);
+  // Handle overnight shifts
+  if (newEnd <= newStart) {
+    newEnd.setDate(newEnd.getDate() + 1);
   }
   
-  return repository.query(query, params);
+  // Create query builder to get all shifts on the same date
+  const qb = repo.createQueryBuilder('shift')
+    .where('shift.date = :date', { date });
+  
+  // Exclude the current shift if provided
+  if (excludeShiftId) {
+    qb.andWhere('shift.id != :excludeShiftId', { excludeShiftId });
+  }
+  
+  // Get all shifts on the same date
+  const shifts = await qb.getMany();
+  
+  // Filter for overlapping shifts in memory
+  return shifts.filter(shift => {
+    const shiftStart = new Date(shift.date + 'T' + shift.startTime);
+    const shiftEnd = new Date(shift.date + 'T' + shift.endTime);
+    
+    // Handle overnight shifts for existing shifts
+    if (shiftEnd <= shiftStart) {
+      shiftEnd.setDate(shiftEnd.getDate() + 1);
+    }
+    
+    
+    // Check if the shifts overlap
+    return shiftStart < newEnd && shiftEnd > newStart;
+  });
 };
+
+

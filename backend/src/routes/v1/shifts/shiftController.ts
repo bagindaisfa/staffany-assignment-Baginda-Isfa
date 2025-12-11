@@ -8,6 +8,7 @@ import {
   IUpdateShift,
 } from "../../../shared/interfaces";
 import moduleLogger from "../../../shared/functions/logger";
+import {mapShiftResponse} from "../../shiftMapper"
 
 const logger = moduleLogger("shiftController");
 
@@ -21,10 +22,14 @@ export const find = async (req: Request, h: ResponseToolkit) => {
       where.date = Between(new Date(startDate), new Date(endDate));
     }
     const data = await shiftUsecase.find({ where });
+
+    const mapped = data.map(mapShiftResponse);
+
+
     const res: ISuccessResponse = {
       statusCode: 200,
       message: "Get shift successful",
-      results: data,
+      results: mapped,
     };
     return res;
   } catch (error) {
@@ -62,7 +67,8 @@ export const create = async (req: Request, h: ResponseToolkit) => {
     };
     return res;
   } catch (error) {
-    logger.error(error.message)
+    logger.error(error.message);
+    console.log(error);
     return errorHandler(h, error);
   }
 };
@@ -103,6 +109,10 @@ export const deleteById = async (req: Request, h: ResponseToolkit) => {
   }
 };
 
+
+
+
+
 export const checkClash = async (req: Request, h: ResponseToolkit) => {
   logger.info("Check shift clash");
   try {
@@ -115,15 +125,15 @@ export const checkClash = async (req: Request, h: ResponseToolkit) => {
       excludeShiftId
     });
 
-    const res: ISuccessResponse = {
-      statusCode: 200,
-      message: "Shift clash check successful",
-      results: {
-        hasClash: overlappingShifts.length > 0,
-        overlappingShifts
-      }
-    };
-    return res;
+    const conflictingShift = overlappingShifts.length > 0
+      ? mapShiftResponse(overlappingShifts[0])
+      : null;
+
+    return h.response({
+      hasClash: overlappingShifts.length > 0,
+      conflictingShift
+    });
+
   } catch (error) {
     logger.error(error.message);
     return errorHandler(h, error);
