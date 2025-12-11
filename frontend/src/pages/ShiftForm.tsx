@@ -175,7 +175,7 @@ const ShiftForm: FunctionComponent = () => {
 
             {/* SAVE BUTTON RIGHT */}
             <Grid item xs={12} style={{ textAlign: "right" }}>
-              <Button type="submit" variant="contained" color="primary">
+              <Button type="submit" variant="contained" color="success">
                 SAVE
               </Button>
             </Grid>
