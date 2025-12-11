@@ -34,13 +34,14 @@ const shiftSchema = Joi.object({
 
 interface RouteParams {
   id: string;
-  ignoreClash: string;
 }
 
 const ShiftForm: FunctionComponent = () => {
   const history = useHistory();
   const location = useLocation();
-  const { id, ignoreClash } = useParams<RouteParams>();
+  // Prefill for Add Shift
+  const params = new URLSearchParams(location.search);
+  const { id } = useParams<RouteParams>();
   const isEdit = id !== undefined;
 
   const [error, setError] = useState("");
@@ -58,9 +59,6 @@ const ShiftForm: FunctionComponent = () => {
     const getData = async () => {
       try {
         if (!isEdit) {
-          // Prefill for Add Shift
-          const params = new URLSearchParams(location.search);
-
           const date = params.get("date");
           const startTime = params.get("startTime");
           const endTime = params.get("endTime");
@@ -73,12 +71,12 @@ const ShiftForm: FunctionComponent = () => {
         }
 
         // Edit shift
-        const { result } = await getShiftById(id);
+        const { results } = await getShiftById(id);
 
-        setValue("name", result.name);
-        setValue("date", result.date.slice(0, 10)); // ensure date format
-        setValue("startTime", result.startTime.slice(0, 5));
-        setValue("endTime", result.endTime.slice(0, 5));
+        setValue("name", results.name);
+        setValue("date", results.date); // ensure date format
+        setValue("startTime", results.startTime);
+        setValue("endTime", results.endTime);
       } catch (error) {
         const message = getErrorMessage(error);
         setError(message);
@@ -91,14 +89,15 @@ const ShiftForm: FunctionComponent = () => {
   const onSubmit = async (data: IFormInput) => {
     try {
       setError("");
-
+      const ignoreClash = params.get("ignoreClash");
+      const payload = {
+        ...data,
+        ignoreClash: ignoreClash === "true"
+      };
+      
       if (isEdit) {
-        await updateShiftById(id, data);
+        await updateShiftById(id, payload);
       } else {
-        const payload = {
-          ...data,
-          ignoreClash: ignoreClash === "true"
-        }
         await createShifts(payload);
       }
 
@@ -132,6 +131,7 @@ const ShiftForm: FunctionComponent = () => {
                 fullWidth
                 label="Shift Name *"
                 {...register("name")}
+                InputLabelProps={{ shrink: true }}
                 error={!!errors.name}
                 helperText={errors.name?.message}
               />

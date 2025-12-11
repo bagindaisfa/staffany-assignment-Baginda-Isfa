@@ -207,11 +207,11 @@ const Shift: FunctionComponent = () => {
     newShiftEndTime.setHours(newShiftStartTime.getHours() + 1);
 
     history.push({
-      pathname: "/shift/true/add",
+      pathname: "/shift/add",
       search: `?date=${format(newShiftDate, "yyyy-MM-dd")}&startTime=${format(
         newShiftStartTime,
         "HH:mm"
-      )}&endTime=${format(newShiftEndTime, "HH:mm")}`,
+      )}&endTime=${format(newShiftEndTime, "HH:mm")}&ignoreClash=true`,
     });
     setShowClashDialog(false);
   };

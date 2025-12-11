@@ -29,7 +29,7 @@ function App() {
                   <Shift />
                 </Dashboard>
               </Route>
-              <Route exact path="/shift/:ignoreClash/add">
+              <Route exact path="/shift/add">
                 <Dashboard>
                   <ShiftForm />
                 </Dashboard>
