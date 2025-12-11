@@ -240,7 +240,7 @@ const Shift: FunctionComponent = () => {
   const handleGetWeekByDate = async () => {
     try {
       const week = await getWeekByDate(dateWeek);
-      setPublishedDate(week.updatedAt);
+      setPublishedDate(week.publishedAt);
     } catch (err) {
       setError("Failed to get week by date");
     }
