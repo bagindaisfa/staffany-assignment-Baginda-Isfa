@@ -38,10 +38,16 @@ export const deleteShiftById = async (id: string) => {
   return data;
 };
 
-export const publishShifts = async (data: PublishShiftsData) => {
+export const publishShifts = async (weekId: string) => {
   const api = getAxiosInstance();
-  const response = await api.post<{ message: string }>(`/shifts/publish`, data);
+  const response = await api.post<{ message: string }>(`/weeks/${weekId}/publish`);
   return response.data;
+};
+
+export const getWeekByDate = async (date: string) => {
+  const api = getAxiosInstance();
+  const { data } = await api.get(`/weeks/by-date/${date}`);
+  return data;
 };
 
 export interface CheckShiftClashParams {

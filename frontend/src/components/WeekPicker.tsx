@@ -6,9 +6,10 @@ import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 interface WeekPickerProps {
   currentWeek: Date;
   onWeekChange: (newWeek: Date) => void;
+  isWeekPublished: boolean;
 }
 
-const WeekPicker: React.FC<WeekPickerProps> = ({ currentWeek, onWeekChange }) => {
+const WeekPicker: React.FC<WeekPickerProps> = ({ currentWeek, onWeekChange, isWeekPublished }) => {
   const startDate = startOfWeek(currentWeek);
   const endDate = endOfWeek(currentWeek);
 
@@ -25,7 +26,7 @@ const WeekPicker: React.FC<WeekPickerProps> = ({ currentWeek, onWeekChange }) =>
       <IconButton onClick={handlePreviousWeek} size="small">
         <ChevronLeft />
       </IconButton>
-      <Typography variant="h6" mx={2}>
+      <Typography variant="h6" mx={2} color={isWeekPublished ? 'success' : ''}>
         {format(startDate, 'MMM d')} - {format(endDate, 'MMM d, yyyy')}
       </Typography>
       <IconButton onClick={handleNextWeek} size="small">

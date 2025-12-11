@@ -17,11 +17,13 @@ import {
   getShifts,
   checkShiftClash,
   publishShifts,
+  getWeekByDate,
 } from "../helper/api/shift";
 import DataTable from "react-data-table-component";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import {
   Box,
   Button,
@@ -82,7 +84,7 @@ const Shift: FunctionComponent = () => {
   const [error, setError] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedShift, setSelectedShift] = useState<ShiftData | null>(null);
-
+  const [publishedDate, setPublishedDate] = useState("");
   const {
     data: shiftsData,
     isLoading,
@@ -100,6 +102,14 @@ const Shift: FunctionComponent = () => {
   const shifts = Array.isArray(shiftsData) ? shiftsData : [];
 
   const isWeekPublished = shifts.some((shift: ShiftData) => shift?.isPublished);
+  const weekId = shifts[0]?.weekId;
+  const dateWeek = shifts[0]?.date;
+
+  useEffect(() => {
+    if (isWeekPublished && dateWeek) {
+      handleGetWeekByDate();
+    }
+  }, [isWeekPublished, dateWeek]);
 
   const onDeleteClick = (id: string) => {
     setSelectedId(id);
@@ -218,16 +228,23 @@ const Shift: FunctionComponent = () => {
 
   const handlePublishWeek = async () => {
     try {
-      await publishShifts({
-        startDate: format(startOfWeek(currentWeek), "yyyy-MM-dd"),
-        endDate: format(endOfWeek(currentWeek), "yyyy-MM-dd"),
-      });
+      await publishShifts(weekId);
       queryClient.invalidateQueries({ queryKey: ["shifts"] });
+      await handleGetWeekByDate();
       setShowPublishDialog(false);
     } catch (err) {
       setError("Failed to publish shifts");
     }
   };
+
+  const handleGetWeekByDate = async () => {
+    try {
+      const week = await getWeekByDate(dateWeek);
+      setPublishedDate(week.updatedAt);
+    } catch (err) {
+      setError("Failed to get week by date");
+    }
+  }
 
   const handleDelete = async () => {
     if (!selectedShift) return;
@@ -263,21 +280,42 @@ const Shift: FunctionComponent = () => {
               <WeekPicker
                 currentWeek={currentWeek}
                 onWeekChange={handleWeekChange}
+                isWeekPublished={isWeekPublished}
               />
-              <Box>
+              {/* {isWeekPublished && (
+                <Box display="flex" alignItems="center" mr={2}>
+                  <TaskAltIcon color="success" sx={{ mr: 1 }} />
+                  <Typography variant="subtitle1" color="success">
+                    Week published on {publishedDate
+                      ? format(parseISO(publishedDate), "MMM d, yyyy")
+                      : "-"}
+                  </Typography>
+                </Box>
+              )} */}
+              <Box display="flex" alignItems="center" mr={2}>
+                {isWeekPublished && (
+                  <>
+                    <TaskAltIcon color="success" sx={{ mr: 1 }} />
+                    <Typography variant="subtitle1" color="success">
+                      Week published on {publishedDate
+                        ? format(parseISO(publishedDate), "MMM d, yyyy")
+                        : "-"}
+                    </Typography>
+                  </>
+                )}
                 <Button
-                  variant="contained"
-                  color="primary"
+                  variant="outlined"
+                  color="success"
                   startIcon={<AddIcon />}
                   onClick={handleAddShift}
                   disabled={isWeekPublished}
-                  sx={{ mr: 2 }}
+                  sx={{ ml: 2, mr: 2 }}
                 >
                   Add Shift
                 </Button>
                 <Button
                   variant="contained"
-                  color="secondary"
+                  color="success"
                   onClick={() => setShowPublishDialog(true)}
                   disabled={shifts.length === 0 || isWeekPublished}
                 >

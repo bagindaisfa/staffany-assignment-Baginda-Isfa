@@ -6,6 +6,7 @@ export interface ShiftData {
   startTime: string;
   endTime: string;
   isPublished?: boolean;
+  weekId: string;
 }
 
 export interface ShiftClashCheck {

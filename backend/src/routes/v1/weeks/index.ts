@@ -1,11 +1,11 @@
 import { Server } from '@hapi/hapi';
 import * as weekController from './weekController';
 
-const register = (server: Server) => {
+export default function (server: Server, basePath: string) {
   // Get week by date
   server.route({
     method: 'GET',
-    path: '/by-date/{date}',
+    path: basePath + '/by-date/{date}',
     handler: weekController.getWeekByDate,
     options: {
       description: 'Get week by date',
@@ -16,7 +16,7 @@ const register = (server: Server) => {
   // Publish a week
   server.route({
     method: 'POST',
-    path: '/{weekId}/publish',
+    path: basePath + '/{weekId}/publish',
     handler: weekController.publishWeek,
     options: {
       description: 'Publish a week',
@@ -27,7 +27,7 @@ const register = (server: Server) => {
   // Unpublish a week
   server.route({
     method: 'POST',
-    path: '/{weekId}/unpublish',
+    path: basePath + '/{weekId}/unpublish',
     handler: weekController.unpublishWeek,
     options: {
       description: 'Unpublish a week',
@@ -38,7 +38,7 @@ const register = (server: Server) => {
   // Check if a date is in a published week
   server.route({
     method: 'GET',
-    path: '/check-published/{date}',
+    path: basePath + '/check-published/{date}',
     handler: weekController.checkDatePublished,
     options: {
       description: 'Check if a date is in a published week',
@@ -46,11 +46,3 @@ const register = (server: Server) => {
     }
   });
 };
-
-const weekRoutes = {
-  name: 'weekRoutes',
-  version: '1.0.0',
-  register
-};
-
-export default weekRoutes;
