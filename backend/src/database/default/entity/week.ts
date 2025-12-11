@@ -24,6 +24,9 @@ export default class Week {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Column({ type: 'date', default: null })
+  publishedAt: Date;
+
   @OneToMany(() => Shift, shift => shift.week)
   shifts: Shift[];
 

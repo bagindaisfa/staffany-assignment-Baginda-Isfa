@@ -52,6 +52,7 @@ export const publishWeek = async (weekId: string): Promise<Week> => {
   }
   
   week.isPublished = true;
+  week.publishedAt = new Date();
   return repository.save(week);
 };
 
@@ -64,6 +65,7 @@ export const unpublishWeek = async (weekId: string): Promise<Week> => {
   }
   
   week.isPublished = false;
+  week.publishedAt = null;
   return repository.save(week);
 };
 
