@@ -22,6 +22,7 @@ interface IFormInput {
   date: string;
   startTime: string;
   endTime: string;
+  weekId: string;
   ignoreClash: boolean;
 }
 
@@ -43,6 +44,7 @@ const ShiftForm: FunctionComponent = () => {
   const params = new URLSearchParams(location.search);
   const { id } = useParams<RouteParams>();
   const isEdit = id !== undefined;
+  const [weekId, setWeekId] = useState("");
 
   const [error, setError] = useState("");
 
@@ -77,6 +79,7 @@ const ShiftForm: FunctionComponent = () => {
         setValue("date", results.date); // ensure date format
         setValue("startTime", results.startTime);
         setValue("endTime", results.endTime);
+        setWeekId(results.weekId);
       } catch (error) {
         const message = getErrorMessage(error);
         setError(message);
@@ -89,9 +92,14 @@ const ShiftForm: FunctionComponent = () => {
   const onSubmit = async (data: IFormInput) => {
     try {
       setError("");
+      
       const ignoreClash = params.get("ignoreClash");
       const payload = {
-        ...data,
+        name: data.name,
+        date: data.date,
+        startTime: normalizeTime(data.startTime),
+        endTime: normalizeTime(data.endTime),
+        weekId: weekId,
         ignoreClash: ignoreClash === "true"
       };
       
@@ -104,8 +112,23 @@ const ShiftForm: FunctionComponent = () => {
       history.push("/shift");
     } catch (error) {
       const message = getErrorMessage(error);
+      console.log(message);
       setError(message);
     }
+  };
+
+  const normalizeTime = (timeStr: string): string => {
+    // If format is HH:mm:ss → convert to HH:mm
+    if (/^\d{2}:\d{2}:\d{2}$/.test(timeStr)) {
+      return timeStr.slice(0, 5);
+    }
+
+    // If format is already HH:mm → return as is
+    if (/^\d{2}:\d{2}$/.test(timeStr)) {
+      return timeStr;
+    }
+
+    throw new Error("Invalid time format: " + timeStr);
   };
 
   return (

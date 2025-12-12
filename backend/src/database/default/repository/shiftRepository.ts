@@ -69,10 +69,16 @@ export const updateById = async (
   id: string,
   payload: QueryDeepPartialEntity<Shift>
 ): Promise<Shift> => {
-  logger.info("Update by id");
-  const repository = getRepository(Shift);
-  await repository.update(id, payload);
-  return findById(id);
+  try {
+    logger.info("Update by id");
+    const repository = getRepository(Shift);
+    await repository.update(id, payload);
+    return findById(id);
+  } catch (error) {
+    logger.error(error.message);
+    console.log(error);
+    throw error;
+  }
 };
 
 export const deleteById = async (

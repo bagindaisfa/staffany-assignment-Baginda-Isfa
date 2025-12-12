@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm";
+import { Column, Entity, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany, Timestamp } from "typeorm";
 import { IsDateString } from 'class-validator';
 import Shift from "./shift";
 
@@ -24,7 +24,7 @@ export default class Week {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @Column({ type: 'date', default: null })
+  @Column({ type: 'timestamp with time zone', nullable: true })
   publishedAt: Date;
 
   @OneToMany(() => Shift, shift => shift.week)

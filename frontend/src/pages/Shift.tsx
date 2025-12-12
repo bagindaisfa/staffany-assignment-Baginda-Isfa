@@ -266,12 +266,14 @@ const Shift: FunctionComponent = () => {
     }
   };
 
-  const handleWeekChange = (newWeek: Date) => {
+  const handleWeekChange = async (newWeek: Date) => {
+    await handleGetWeekByDate();
     setCurrentWeek(newWeek);
     // Update URL with the new week
     const searchParams = new URLSearchParams(location.search);
     searchParams.set("week", format(newWeek, "yyyy-MM-dd"));
     history.push({ search: searchParams.toString() });
+    
   };
 
   return (

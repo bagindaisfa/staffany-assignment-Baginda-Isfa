@@ -87,7 +87,8 @@ export const updateById = async (req: Request, h: ResponseToolkit) => {
     };
     return res;
   } catch (error) {
-    logger.error(error.message)
+    logger.error(error.message);
+    console.log(error);
     return errorHandler(h, error);
   }
 };

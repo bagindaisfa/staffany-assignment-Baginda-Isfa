@@ -48,20 +48,25 @@ export const create = async (payload: ICreateShift): Promise<Shift> => {
 };
 
 export const updateById = async (id: string, payload: IUpdateShift) => {
-  const clashes = await shiftRepository.findOverlappingShifts(
-    payload.date,
-    payload.startTime,
-    payload.endTime,
-    id // exclude this shift
-  );
+  try {
+    const clashes = await shiftRepository.findOverlappingShifts(
+      payload.date,
+      payload.startTime,
+      payload.endTime,
+      id // exclude this shift
+    );
 
-  if (clashes.length > 0 && !payload.ignoreClash) {
-    throw new BadRequestError("Shift overlaps with existing shift.");
+    if (clashes.length > 0 && !payload.ignoreClash) {
+      throw new BadRequestError("Shift overlaps with existing shift.");
+    }
+
+    return await shiftRepository.updateById(id, {
+      ...payload,
+    });
+  } catch (error) {
+    console.log(error);
+    throw error;
   }
-
-  return await shiftRepository.updateById(id, {
-    ...payload,
-  });
 };
 
 export const deleteById = async (id: string | string[]) => {
