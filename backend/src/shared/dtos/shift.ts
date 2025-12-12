@@ -14,7 +14,9 @@ export const updateShiftDto = Joi.object({
   name: Joi.string(),
   date: Joi.date(),
   startTime: Joi.string().regex(timeRegex),
-  endTime:Joi.string().regex(timeRegex),
+  endTime: Joi.string().regex(timeRegex),
+  weekId: Joi.string().optional(),  
+  ignoreClash: Joi.boolean().default(false)  
 });
 
 export const checkClashShiftDto = Joi.object({

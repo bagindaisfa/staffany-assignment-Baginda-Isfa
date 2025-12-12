@@ -65,14 +65,18 @@ export const create = async (payload: any): Promise<Shift> => {
   
 };
 
-export const updateById = async (
-  id: string,
-  payload: QueryDeepPartialEntity<Shift>
-): Promise<Shift> => {
+export const updateById = async (id: string, payload: any): Promise<Shift> => {
   try {
     logger.info("Update by id");
     const repository = getRepository(Shift);
-    await repository.update(id, payload);
+    const data = {
+      name: payload.name,
+      date: payload.date,
+      startTime: payload.startTime,
+      endTime: payload.endTime,
+      weekId: payload.weekId,
+    };
+    await repository.update(id, data);
     return findById(id);
   } catch (error) {
     logger.error(error.message);
